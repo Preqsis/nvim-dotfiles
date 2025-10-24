@@ -1,0 +1,17 @@
+return {}
+-- return {
+--     -- dir = "~/.config/nvim/dev/nvim-llm",
+--     dir = "~/Projects/neovim/nvim-llm",
+--     name = "nvim-llm",
+--     dependencies = {
+--         "nvim-lua/plenary.nvim"
+--     },
+--     config = function()
+--         require("nvim-llm").setup({
+--             chat_aliases = {
+--                 user = "Preqsis",
+--                 llm = "Claude"
+--             }
+--         })
+--     end,
+-- }
