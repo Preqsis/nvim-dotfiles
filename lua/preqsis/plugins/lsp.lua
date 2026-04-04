@@ -14,7 +14,7 @@ return {
 		},
 		init = function()
 			-- format keymap
-			vim.keymap.set({ "n", "v" }, "<leader>ft", function()
+			vim.keymap.set({ "n", "v" }, "<leader>cf", function()
 				require("conform").format({
 					lsp_fallback = true,
 					async = true,
@@ -56,25 +56,25 @@ return {
 			local on_attach = function(_, bufnr)
 				local opts = { buffer = bufnr, silent = true, noremap = true }
 				local keymap = vim.keymap.set
+
 				if pcall(require, "telescope") then
 					keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
-					keymap("n", "gR", "<cmd>Telescope lsp_references<CR>", opts)
-					keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
+					keymap("n", "gr", "<cmd>Telescope lsp_references<CR>", opts)
+					keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)  -- not working?
 					keymap("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts)
 					keymap("n", "<leader>d", "<cmd>Telescope diagnostics bufnr=0<CR>", opts)
 				else
 					keymap("n", "gd", vim.lsp.buf.definition, opts)
-					keymap("n", "gR", vim.lsp.buf.references, opts)
+					keymap("n", "gr", vim.lsp.buf.references, opts)
 					keymap("n", "gi", vim.lsp.buf.implementation, opts)
 					keymap("n", "gt", vim.lsp.buf.type_definition, opts)
 					keymap("n", "<leader>d", vim.diagnostic.setloclist, opts)
 				end
-				keymap("n", "gD", vim.lsp.buf.declaration, opts)
-				keymap("n", "K", vim.lsp.buf.hover, opts)
+
 				keymap({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, opts)
-				keymap("n", "<leader>dl", vim.diagnostic.open_float, opts)
-				keymap("n", "[d", vim.diagnostic.goto_prev, opts)
-				keymap("n", "]d", vim.diagnostic.goto_next, opts)
+				keymap("n", "K", vim.lsp.buf.hover, opts)
+
+				-- keymap("n", "gD", vim.lsp.buf.declaration, opts)  -- do I need this?
 			end
 
 			-- pyright (type checking)

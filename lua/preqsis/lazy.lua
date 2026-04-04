@@ -14,9 +14,7 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup(
     {
         { import = "preqsis.plugins" },
-        { import = "preqsis.plugins.git" },
-        { import = "preqsis.plugins.lsp" },
         { import = "preqsis.plugins.debug" },
-        { import = "preqsis.plugins.llm"}
+        { import = "preqsis.plugins.custom"}
     }
 )

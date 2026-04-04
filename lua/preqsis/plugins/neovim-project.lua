@@ -21,27 +21,4 @@ return {
 		lazy = false,
 		priority = 100,
 	},
-	-- {
-	--     "notjedi/nvim-rooter.lua",
-	--     config = function()
-	--         require("nvim-rooter").setup()
-	--     end,
-	-- },
-	-- {
-	--     "linux-cultist/venv-selector.nvim",
-	--     dependencies = {
-	--         "neovim/nvim-lspconfig",
-	--         "mfussenegger/nvim-dap",
-	--         -- "mfussenegger/nvim-dap-python", --optional
-	--         "nvim-telescope/telescope.nvim",
-	--     },
-	--     opts = {
-	--         auto_refresh = true,
-	--     },
-	--     event = "VeryLazy",
-    --     branch = "regexp",
-	--     keys = {
-	--         { ",fv", "<cmd>VenvSelect<cr>" },
-	--     },
-	-- },
 }
