@@ -17,9 +17,9 @@ return {
 					treesitter = true,
 					telescope = { enabled = true },
 					native_lsp = { enabled = true },
-					nvimtree = true,
+					neotree = true,
 					gitsigns = true,
-					cmp = true,
+					blink_cmp = true,
 					indent_blankline = { enabled = true },
 				},
 				custom_highlights = function()
@@ -45,13 +45,17 @@ return {
 			"nvim-tree/nvim-web-devicons", -- not strictly required, but recommended
 			"MunifTanjim/nui.nvim",
 		},
+		cmd = "Neotree",
+		keys = {
+			{ "<leader>g", "<cmd>Neotree toggle<CR>", desc = "Toggle Neo-tree" },
+		},
 		config = function()
 			local neo_tree = require("neo-tree")
 			neo_tree.setup({
 				enable_diagnostics = true,
 				source_selector = {
 					winbar = false,
-					statuslien = false,
+					statusline = false,
 				},
 				filesystem = {
 					filtered_items = {
@@ -64,9 +68,6 @@ return {
 					},
 				},
 			})
-
-			vim.keymap.set("n", "<leader>g", ":Neotree toggle<CR>", {})
-			-- vim.keymap.set("n", "<leader>gg", ":Neotree toggle position=float<CR>", {})
 		end,
 	},
 
@@ -77,22 +78,9 @@ return {
 		config = function()
 			require("lualine").setup({
 				options = {
-					icons_enabled = true,
-					theme = "auto",
 					component_separators = { left = "", right = "" },
 					section_separators = { left = "", right = "" },
-					disabled_filetypes = {
-						statusline = {},
-						winbar = {},
-					},
-					ignore_focus = {},
-					always_divide_middle = true,
 					globalstatus = true,
-					refresh = {
-						statusline = 1000,
-						tabline = 1000,
-						winbar = 1000,
-					},
 				},
 				sections = {
 					lualine_a = { "mode" },
@@ -107,18 +95,6 @@ return {
 					lualine_y = { "progress" },
 					lualine_z = { "location" },
 				},
-				inactive_sections = {
-					lualine_a = {},
-					lualine_b = {},
-					lualine_c = { "filename" },
-					lualine_x = { "location" },
-					lualine_y = {},
-					lualine_z = {},
-				},
-				tabline = {},
-				winbar = {},
-				inactive_winbar = {},
-				extensions = {},
 			})
 		end,
 	},
@@ -214,7 +190,7 @@ return {
 
 			vim.api.nvim_create_autocmd("BufReadPre", {
 				callback = function(args)
-					local ok, stats = pcall(vim.loop.fs_stat, args.file)
+					local ok, stats = pcall(vim.uv.fs_stat, args.file)
 					if ok and stats and stats.size > 2 * 1024 * 1024 then
 						require("ibl").setup_buffer(args.buf, { enabled = false })
 					end
@@ -238,6 +214,9 @@ return {
 		"folke/todo-comments.nvim",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		event = { "BufReadPost", "BufNewFile" },
+		keys = {
+			{ "<leader>tm", "<cmd>TodoTelescope<CR>", desc = "Search TODOs (Telescope)" },
+		},
 		config = function()
 			local todo = require("todo-comments")
 			todo.setup({
@@ -269,45 +248,79 @@ return {
 				},
 				signs = true,
 			})
-			vim.keymap.set("n", "<leader>tm", "<cmd>TodoTelescope<CR>", { desc = "Search TODOs (Telescope)" })
 		end,
 	},
 
-	-- Tmux integration
+	-- Session persistence
 	{
-		"aserowy/tmux.nvim",
-		config = function()
-			return require("tmux").setup({
-				copy_sync = {
-					enable = false,
-				},
-				resize = {
-					enable_default_keybindings = false,
-				},
+		"folke/persistence.nvim",
+		event = "BufReadPre",
+		keys = {
+			{ "<leader>ql", "<cmd>SessionLoad<CR>", desc = "Session load (cwd)" },
+		},
+		opts = {
+		},
+		init = function()
+			-- custom commands
+			vim.api.nvim_create_user_command("SessionLoad", function()
+				require("persistence").load()
+			end, {})
+
+			vim.api.nvim_create_user_command("SessionLast", function()
+				require("persistence").load({ last = true })
+			end, {})
+
+			vim.api.nvim_create_user_command("SessionSelect", function()
+				require("persistence").select()
+			end, {})
+			
+            -- Clean up non-file buffers before session save
+			local excluded_fts = { "neo-tree", "codecompanion" }
+			vim.api.nvim_create_autocmd("VimLeavePre", {
+				callback = function()
+					for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+						if vim.api.nvim_buf_is_valid(buf) then
+							local ft = vim.bo[buf].filetype
+							if vim.tbl_contains(excluded_fts, ft) then
+								pcall(vim.api.nvim_buf_delete, buf, { force = true })
+							end
+						end
+					end
+				end,
+			})
+
+			vim.api.nvim_create_autocmd("VimEnter", {
+				nested = true,
+				callback = function()
+					if vim.fn.argc() == 0 and not vim.g.started_with_stdin then
+						vim.schedule(function()
+							require("persistence").load()
+						end)
+					end
+				end,
 			})
 		end,
 	},
 
-	-- Nerd-commenter
+	-- WezTerm pane navigation
 	{
-		"preservim/nerdcommenter",
+		"mrjones2014/smart-splits.nvim",
+		event = "VeryLazy",
 		config = function()
-			-- Create default mappings
-			vim.g.NERDCreateDefaultMappings = 1
-			-- Add spaces after comment delimiters by default
-			vim.g.NERDSpaceDelims = 1
-			-- Use compact syntax for prettified multi-line comments
-			vim.g.NERDCompactSexyComs = 1
-			-- Align line-wise comment delimiters flush left instead of following code indentation
-			vim.g.NERDDefaultAlign = "left"
-			-- Set a language to use its alternate delimiters by default
-			vim.g.NERDAltDelims_java = 1
-			-- Allow commenting and inverting empty lines (useful when commenting a region)
-			vim.g.NERDCommentEmptyLines = 1
-			-- Enable trimming of trailing whitespace when uncommenting
-			vim.g.NERDTrimTrailingWhitespace = 1
-            -- Enable NERDCommenterToggle to check all selected lines is commented or not
-			vim.g.NERDToggleCheckAllLines = 1
+			require("smart-splits").setup({
+				at_edge = "stop",
+			})
+			vim.keymap.set("n", "<C-h>", require("smart-splits").move_cursor_left, { desc = "Move to left split/pane" })
+			vim.keymap.set("n", "<C-j>", require("smart-splits").move_cursor_down, { desc = "Move to below split/pane" })
+			vim.keymap.set("n", "<C-k>", require("smart-splits").move_cursor_up, { desc = "Move to above split/pane" })
+			vim.keymap.set("n", "<C-l>", require("smart-splits").move_cursor_right, { desc = "Move to right split/pane" })
 		end,
+	},
+
+	-- Treesitter-aware comment strings
+	{
+		"folke/ts-comments.nvim",
+		event = "VeryLazy",
+		opts = {},
 	},
 }

@@ -16,7 +16,7 @@ return {
 			-- format keymap
 			vim.keymap.set({ "n", "v" }, "<leader>cf", function()
 				require("conform").format({
-					lsp_fallback = true,
+					lsp_format = "fallback",
 					async = true,
 					timeout_ms = 3000,
 				})
@@ -29,81 +29,63 @@ return {
 		"neovim/nvim-lspconfig",
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
-			"hrsh7th/cmp-nvim-lsp",
+			{ "saghen/blink.cmp" },
+			{ "nvim-telescope/telescope.nvim" },
 			{ "antosha417/nvim-lsp-file-operations", config = true },
-			-- telescope is used in the keymaps below
-			{ "nvim-telescope/telescope.nvim", optional = true },
 		},
 		config = function()
-			-- cmp capabilities (guarded)
-			local ok_cmp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
-			local capabilities = vim.lsp.protocol.make_client_capabilities()
-			if ok_cmp then
-				capabilities = cmp_nvim_lsp.default_capabilities(capabilities)
-			end
+			-- blink.cmp capabilities
+			local capabilities = require("blink.cmp").get_lsp_capabilities()
 
 			-- diagnostic signs
-			local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
-			for type, icon in pairs(signs) do
-				local hl = "DiagnosticSign" .. type
-				vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
-			end
 			vim.diagnostic.config({
 				virtual_text = { severity = { min = vim.diagnostic.severity.WARN } },
-			})
-
-			-- shared on_attach
-			local on_attach = function(_, bufnr)
-				local opts = { buffer = bufnr, silent = true, noremap = true }
-				local keymap = vim.keymap.set
-
-				if pcall(require, "telescope") then
-					keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
-					keymap("n", "gr", "<cmd>Telescope lsp_references<CR>", opts)
-					keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)  -- not working?
-					keymap("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts)
-					keymap("n", "<leader>d", "<cmd>Telescope diagnostics bufnr=0<CR>", opts)
-				else
-					keymap("n", "gd", vim.lsp.buf.definition, opts)
-					keymap("n", "gr", vim.lsp.buf.references, opts)
-					keymap("n", "gi", vim.lsp.buf.implementation, opts)
-					keymap("n", "gt", vim.lsp.buf.type_definition, opts)
-					keymap("n", "<leader>d", vim.diagnostic.setloclist, opts)
-				end
-
-				keymap({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, opts)
-				keymap("n", "K", vim.lsp.buf.hover, opts)
-
-				-- keymap("n", "gD", vim.lsp.buf.declaration, opts)  -- do I need this?
-			end
-
-			-- pyright (type checking)
-			vim.lsp.config("pyright", {
-				capabilities = capabilities,
-				on_attach = on_attach,
-				-- settings = { python = { analysis = { typeCheckingMode = "basic" } } },
-			})
-
-			-- ruff-lsp (linting/quickfixes) — formatting done via Conform (ruff)
-			vim.lsp.config("ruff", {
-				capabilities = capabilities,
-				on_attach = on_attach,
-				init_options = {
-					settings = {
-						args = {}, -- pass CLI args to ruff here if you want
+				signs = {
+					text = {
+						[vim.diagnostic.severity.ERROR] = " ",
+						[vim.diagnostic.severity.WARN] = " ",
+						[vim.diagnostic.severity.HINT] = "󰠠 ",
+						[vim.diagnostic.severity.INFO] = " ",
 					},
 				},
 			})
 
-			-- lua_ls (Neovim dev UX)
+			-- LSP keymaps via autocmd
+			vim.api.nvim_create_autocmd("LspAttach", {
+				callback = function(event)
+					local buf = event.buf
+					local function opts(desc)
+						return { buffer = buf, silent = true, noremap = true, desc = desc }
+					end
+
+					vim.keymap.set("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts("Go to definition"))
+					vim.keymap.set("n", "grr", "<cmd>Telescope lsp_references<CR>", opts("References"))
+					vim.keymap.set("n", "gri", "<cmd>Telescope lsp_implementations<CR>", opts("Implementations"))
+					vim.keymap.set("n", "grt", "<cmd>Telescope lsp_type_definitions<CR>", opts("Type definitions"))
+					vim.keymap.set(
+						"n",
+						"<leader>d",
+						"<cmd>Telescope diagnostics bufnr=0<CR>",
+						opts("Buffer diagnostics")
+					)
+					vim.keymap.set({ "n", "v" }, "gra", vim.lsp.buf.code_action, opts("Code action"))
+					vim.keymap.set("n", "K", vim.lsp.buf.hover, opts("Hover"))
+				end,
+			})
+
+			-- server configs (remove on_attach from each)
+			vim.lsp.config("pyright", { capabilities = capabilities })
+			vim.lsp.config("ruff", {
+				capabilities = capabilities,
+				init_options = { settings = { args = {} } },
+			})
 			vim.lsp.config("lua_ls", {
 				capabilities = capabilities,
-				on_attach = on_attach,
 				settings = {
 					Lua = {
 						diagnostics = { globals = { "vim" } },
 						workspace = {
-							library = vim.api.nvim_get_runtime_file("", true),
+							library = vim.api.nvim_list_runtime_paths(),
 							checkThirdParty = false,
 						},
 						telemetry = { enable = false },
@@ -111,7 +93,6 @@ return {
 				},
 			})
 
-			-- enable (auto-start for matching filetypes/root)
 			vim.lsp.enable("pyright")
 			vim.lsp.enable("ruff")
 			vim.lsp.enable("lua_ls")
@@ -151,7 +132,6 @@ return {
 		config = function()
 			require("mason-tool-installer").setup({
 				ensure_installed = {
-					"ruff", -- CLI for ruff_fix/ruff_format
 					"stylua", -- Lua formatter
 					"jq", -- JSON formatter
 				},

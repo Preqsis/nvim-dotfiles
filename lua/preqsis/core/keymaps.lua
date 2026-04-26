@@ -3,20 +3,20 @@ vim.g.mapleader = ","
 vim.g.maplocalleader = ","
 
 local opts = { noremap = true, silent = true }
-local map = vim.api.nvim_set_keymap
+local map = vim.keymap.set
 
 -- Cycle buffers by ctrl+n or cltr+p
-map("n", "<C-n>", ":bnext<CR>", opts)
-map("n", "<C-p>", ":bprevious<CR>", opts)
+map("n", "<C-n>", "<cmd>bnext<CR>", opts)
+map("n", "<C-p>", "<cmd>bprevious<CR>", opts)
 
 -- Quick save by ctrl+s
-map("n", "<C-S>", ":update<CR>", opts)
-map("v", "<C-S>", "<C-C>:update<CR>", opts)
-map("i", "<C-S>", "<C-O>:update<CR>", opts)
+map("n", "<C-S>", "<cmd>update<CR>", opts)
+map("v", "<C-S>", "<cmd>update<CR>", opts)
+map("i", "<C-S>", "<cmd>update<CR>", opts)
 
 -- Quick splits
-map("n", "<leader>sv", ":vsplit<CR>", opts)
-map("n", "<leader>sh", ":split<CR>", opts)
+map("n", "<leader>sv", "<cmd>vsplit<CR>", opts)
+map("n", "<leader>sh", "<cmd>split<CR>", opts)
 
 -- Quick window navigaion by ctrl+w
 -- map('n', '<C-w>', '<C-w>w', opts)
@@ -43,12 +43,6 @@ map("i", "<Down>", "<C-o>gj", opts)
 map("i", "<Home>", "<C-o>g<Home>", opts)
 map("i", "<End>", "<C-o>g<End>", opts)
 
--- Czech chars are numbers for easier motions
--- for i, v in ipairs({'é', '+', 'ě', 'š', 'č', 'ř', 'ž', 'ý', 'á', 'í'}) do
---     map('n', v, tostring(i-1), opts)
---     map('v', v, tostring(i-1), opts)
--- end
-
 -- Experimental
 vim.keymap.set("x", "<leader>p", '"_dP') -- paste and keep in clipboard
 
@@ -68,10 +62,6 @@ end, opts)
 vim.keymap.set("n", "rr", function()
 	require("tmux").resize_right(5)
 end, opts)
-
--- CodeCompanion
-map("n", "<leader>a", ":CodeCompanionChat Toggle<CR>", opts)
-map("n", "<leader>h", ":CodeCompanionChat<CR>", opts)
 
 -- Execute current line as shell command and insert output below
 -- Only inserts into buffer on success with output, otherwise shows notifications:

@@ -11,16 +11,16 @@ return {
 		local alpha = require("alpha")
 		local startify = require("alpha.themes.startify")
 
-		-- -- read file into a table of lines
-		-- local function read_lines(path)
-		--     local ok, data = pcall(vim.fn.readfile, path)
-		--     return ok and data or { "ASCII header not found :(" }
-		-- end
-        --
-		-- -- point this to wherever you saved it
-		-- local ascii = read_lines(vim.fn.stdpath("config") .. "/assets/avatar.txt")
-        --
-		-- startify.section.header.val = ascii
+        -- read file into a table of lines
+        local function read_lines(path)
+            local ok, data = pcall(vim.fn.readfile, path)
+            return ok and data or { "ASCII header not found :(" }
+        end
+
+        -- point this to wherever you saved it
+        local ascii = read_lines(vim.fn.stdpath("config") .. "/assets/avatar_2.txt")
+
+        startify.section.header.val = ascii
 		startify.nvim_web_devicons.enabled = true
 
 		-- Handy buttons (Telescope assumed present; adjust as you like)
@@ -28,7 +28,7 @@ return {
 			startify.button("n", "  New file", ":ene | startinsert<CR>"),
 			startify.button("r", "  Recent", ":Telescope oldfiles<CR>"),
 			startify.button("p", "  File browser", ":Telescope file_browser<CR>"),
-            startify.button("q", "󱄊  Quit", ":qa<CR>"),
+            -- startify.button("q", "󱄊  Quit", ":qa<CR>"),
 		}
 
 		alpha.setup(startify.config)

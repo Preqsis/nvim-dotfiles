@@ -29,9 +29,11 @@ vim.o.writebackup = false
 vim.o.swapfile = false
 
 -- Line wrapping
-vim.cmd("setlocal wrap linebreak nolist")
-vim.cmd("set virtualedit=")
-vim.cmd("setlocal display+=lastline")
+vim.opt.wrap = true
+vim.opt.linebreak = true
+vim.opt.list = false
+vim.opt.virtualedit = ""
+vim.opt.display:append("lastline")
 
 -- Broader gitconfig filetype detenction
 vim.api.nvim_create_autocmd({"BufRead", "BufNewFile"}, {
