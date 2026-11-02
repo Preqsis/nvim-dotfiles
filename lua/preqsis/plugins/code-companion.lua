@@ -1,42 +1,61 @@
 return {
 	{
 		"olimorris/codecompanion.nvim",
+
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"nvim-treesitter/nvim-treesitter",
 		},
+
 		keys = {
 			{
 				"<leader>a",
 				"<cmd>CodeCompanionChat Toggle<CR>",
 				mode = "n",
-				desc = "Toggle Claude Code chat",
+				desc = "Toggle Jarvis chat",
 			},
 			{
 				"<leader>h",
 				"<cmd>CodeCompanionChat<CR>",
 				mode = "n",
-				desc = "New Claude Code chat",
+				desc = "New Jarvis chat",
 			},
 		},
+
 		config = function()
-			-- Custom color scheme
+			----------------------------------------------------------------
+			-- UI
+			----------------------------------------------------------------
+
 			vim.api.nvim_set_hl(0, "CodeCompanionDarkGreen", {
 				bg = "#0a0a1a",
 				fg = "#ffffff",
 			})
 
-			local rules_dir = vim.env.LLM_RULES_DIR
-				or (vim.fn.stdpath("config") .. "/llm-rules")
+			----------------------------------------------------------------
+			-- Paths
+			----------------------------------------------------------------
+
+			local rules_dir = vim.env.LLM_RULES_DIR or (vim.fn.stdpath("config") .. "/llm-rules")
+
+			----------------------------------------------------------------
+			-- Claude
+			--
+			-- Used only for HTTP interactions such as inline editing.
+			----------------------------------------------------------------
+
+			local claude_model = "claude-opus-4-6"
+
+			----------------------------------------------------------------
+			-- Helpers
+			----------------------------------------------------------------
 
 			local function read_file(path)
 				local file, err = io.open(path, "r")
 
 				if not file then
-					vim.notify(
-						"Unable to open file: " .. path .. "\n" .. tostring(err),
-						vim.log.levels.ERROR
-					)
+					vim.notify("Unable to open file: " .. path .. "\n" .. tostring(err), vim.log.levels.ERROR)
+
 					return nil
 				end
 
@@ -47,32 +66,28 @@ return {
 			end
 
 			----------------------------------------------------------------
-			-- Previous HTTP/local-model configuration
-			--
-			-- Kept here so it can be restored later.
+			-- CodeCompanion
 			----------------------------------------------------------------
 
-			-- local models = {
-			-- 	opus = "claude-opus-4-6",
-			-- 	sonnet = "claude-sonnet-4-5",
-			-- 	qwen_7b = "qwen2.5-coder-7b-instruct",
-			-- 	qwen_14b = "qwen2.5-coder-14b-instruct",
-			-- 	qwen3_30b = "qwen3-coder-30b-a3b-instruct",
-			-- }
-			--
-			-- local active_model = models.opus
-			-- local active_adapter = "anthropic"
-			--
-			-- Alternative local setup:
-			--
-			-- local active_model = models.qwen3_30b
-			-- local active_adapter = "lmstudio"
-
 			require("codecompanion").setup({
+				----------------------------------------------------------------
+				-- Interactions
+				----------------------------------------------------------------
+
 				interactions = {
+					------------------------------------------------------------
+					-- Chat
+					--
+					-- Jarvis owns:
+					--   - session state
+					--   - tools
+					--   - sandbox
+					--   - model
+					--   - persistence
+					------------------------------------------------------------
+
 					chat = {
-						-- Claude Code through the Agent Client Protocol.
-						adapter = "claude_code",
+						adapter = "jarvis",
 
 						keymaps = {
 							send = {
@@ -96,10 +111,8 @@ return {
 									})
 
 									if #files == 0 then
-										vim.notify(
-											"No rule files found in: " .. rules_dir,
-											vim.log.levels.WARN
-										)
+										vim.notify("No rule files found in: " .. rules_dir, vim.log.levels.WARN)
+
 										return
 									end
 
@@ -122,8 +135,7 @@ return {
 											return
 										end
 
-										local name =
-											vim.fn.fnamemodify(selected, ":t:r")
+										local name = vim.fn.fnamemodify(selected, ":t:r")
 
 										chat:add_message({
 											role = "user",
@@ -135,109 +147,148 @@ return {
 											tag = "rules",
 										})
 
-										vim.notify(
-											"Rules loaded: " .. name,
-											vim.log.levels.INFO
-										)
+										vim.notify("Rules loaded: " .. name, vim.log.levels.INFO)
 									end)
 								end,
 							},
 						},
 					},
 
-					----------------------------------------------------------------
-					-- Claude Code ACP currently supports chat only.
+					------------------------------------------------------------
+					-- Inline editing
 					--
-					-- Restore this block when you switch back to an HTTP adapter.
-					----------------------------------------------------------------
+					-- ACP agents are chat-only.
+					-- Keep Claude/Anthropic HTTP here.
+					------------------------------------------------------------
 
-					-- inline = {
-					-- 	adapter = {
-					-- 		name = active_adapter,
-					-- 		model = active_model,
-					-- 	},
-					-- },
-					--
-					-- shared = {
-					-- 	keymaps = {
-					-- 		accept_change = {
-					-- 			modes = { n = "ga" },
-					-- 		},
-					-- 		reject_change = {
-					-- 			modes = { n = "gr" },
-					-- 		},
-					-- 	},
-					-- },
+					inline = {
+						adapter = {
+							name = "anthropic",
+							model = claude_model,
+						},
+					},
+
+					------------------------------------------------------------
+					-- Shared keymaps
+					------------------------------------------------------------
+
+					shared = {
+						keymaps = {
+							accept_change = {
+								modes = {
+									n = "ga",
+								},
+							},
+
+							reject_change = {
+								modes = {
+									n = "gr",
+								},
+							},
+						},
+					},
 				},
 
-				adapters = {
-					acp = {
-						claude_code = function()
-							return require("codecompanion.adapters").extend(
-								"claude_code",
-								{
-									-- Explicitly provide the same AWS Bedrock
-									-- environment used by Claude Code.
-									env = {
-										CLAUDE_CODE_USE_BEDROCK = "1",
-										AWS_PROFILE = "dev_claude_code",
-										AWS_REGION = "us-east-1",
-									},
+				----------------------------------------------------------------
+				-- Adapters
+				----------------------------------------------------------------
 
-									-- Claude Code will otherwise use its normal
-									-- ~/.claude configuration, including the
-									-- awsAuthRefresh command.
-									defaults = {
-										timeout = 120000,
+				adapters = {
+					------------------------------------------------------------
+					-- HTTP
+					--
+					-- Claude remains available for inline editing and can also
+					-- still be selected manually in CodeCompanion if needed.
+					------------------------------------------------------------
+
+					http = {
+						anthropic = function()
+							return require("codecompanion.adapters").extend("anthropic", {
+								env = {
+									api_key = "ANTHROPIC_API_KEY",
+								},
+
+								schema = {
+									model = {
+										default = claude_model,
 									},
-								}
-							)
+								},
+							})
 						end,
 					},
 
-					----------------------------------------------------------------
-					-- Previous HTTP adapters
+					------------------------------------------------------------
+					-- ACP
 					--
-					-- Uncomment these together with `models`, `active_model`,
-					-- `active_adapter`, and the inline interaction above.
-					----------------------------------------------------------------
+					-- CodeCompanion starts one Jarvis ACP process and creates
+					-- sessions inside it.
+					------------------------------------------------------------
 
-					-- http = {
-					-- 	anthropic = function()
-					-- 		return require("codecompanion.adapters").extend(
-					-- 			"anthropic",
-					-- 			{
-					-- 				env = {
-					-- 					api_key = "ANTHROPIC_API_KEY",
-					-- 				},
-					-- 				schema = {
-					-- 					model = {
-					-- 						default = models.opus,
-					-- 					},
-					-- 				},
-					-- 			}
-					-- 		)
-					-- 	end,
-					--
-					-- 	lmstudio = function()
-					-- 		return require("codecompanion.adapters").extend(
-					-- 			"openai_compatible",
-					-- 			{
-					-- 				env = {
-					-- 					url = "http://localhost:1234",
-					-- 					api_key = "lm-studio",
-					-- 					chat_url = "/v1/chat/completions",
-					-- 				},
-					-- 				schema = {
-					-- 					model = {
-					-- 						default = models.qwen3_30b,
-					-- 					},
-					-- 				},
-					-- 			}
-					-- 		)
-					-- 	end,
-					-- },
+					acp = {
+						jarvis = function()
+							local helpers = require("codecompanion.adapters.acp.helpers")
+
+							return {
+								name = "jarvis",
+								formatted_name = "Jarvis",
+								type = "acp",
+
+								roles = {
+									llm = "assistant",
+									user = "user",
+								},
+
+								commands = {
+									default = {
+										"/home/preqsis/Projects/jarvis/master/.venv/bin/jarvis",
+										"acp",
+									},
+								},
+
+								defaults = {
+									mcpServers = {},
+									timeout = 60000,
+								},
+
+								parameters = {
+									protocolVersion = 1,
+
+									clientCapabilities = {
+										fs = {
+											readTextFile = true,
+											writeTextFile = true,
+										},
+									},
+
+									clientInfo = {
+										name = "CodeCompanion.nvim",
+										version = "1.0.0",
+									},
+								},
+
+								handlers = {
+									setup = function()
+										return true
+									end,
+
+									auth = function()
+										return true
+									end,
+
+									form_messages = function(self, messages, capabilities)
+										return helpers.form_messages(self, messages, capabilities)
+									end,
+
+									on_exit = function() end,
+								},
+							}
+						end,
+					},
 				},
+
+				----------------------------------------------------------------
+				-- Display
+				----------------------------------------------------------------
 
 				display = {
 					chat = {
@@ -257,7 +308,10 @@ return {
 				},
 			})
 
+			----------------------------------------------------------------
 			-- Buffer-local settings
+			----------------------------------------------------------------
+
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "codecompanion",
 
